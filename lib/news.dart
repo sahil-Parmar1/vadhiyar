@@ -101,15 +101,21 @@ class _newsState extends State<news> {
                       title: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Container(
-                                margin: EdgeInsets.only(right: 10),
-                                child: buildSenderLogo(newsData['sendername']),
-                              ),
-                              SizedBox(width: 8),
-                              Text("${newsData['sendername']}"),
-                            ],
+                           GestureDetector(
+                             onTap: (){
+                              print("use screen is pressed..");
+
+                              },
+                            child: Row(
+                              children: [
+                                Container(
+                                  margin: EdgeInsets.only(right: 10),
+                                  child: buildSenderLogo(newsData['sendername']),
+                                ),
+                                SizedBox(width: 8),
+                                Text("${newsData['sendername']}"),
+                              ],
+                            ),
                           ),
                           SizedBox(height: 8),
                           mediaWidget,
@@ -652,6 +658,10 @@ Future<void> deleteExpiredDocuments() async {
     print('Error while deleting expired documents: $e');
   }
 }
+
+
+//on tap user about screen
+
 
 
 

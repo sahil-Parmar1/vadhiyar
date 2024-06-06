@@ -408,7 +408,7 @@ Future<void> sendPost(String? downloadUrl, String content, String? title) async 
   final prefs = await SharedPreferences.getInstance();
   final phoneNumber = prefs.getString('phonenumber') ?? 'unknown';
   final timestamp=DateTime.now().toIso8601String();
-  final formatDate=DateTime.now().add(Duration(days: 5)).toIso8601String();
+  final formatDate=DateTime.now().add(Duration(days: 7)).toIso8601String();
   print("endtime is =======>>>$formatDate");
   Map<String, dynamic> data = {
     'content': content,
