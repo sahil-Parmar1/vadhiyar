@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="google_app_id">1:395286959396:android:92f61e0b365f78cdf6cfb1</string>
+    <string name="firebase_database_url">https://vadhiyar-2b0ae.firebaseio.com</string>
+    <string name="gcm_defaultSenderId">1234567890</string>
+    <string name="project_id">vadhiyar-2b0ae</string>
+    <string name="google_api_key">AIzaSyDflWQY9shwDUltwadmonkFGt-WsiTxir4</string>
+    <string name="google_crash_reporting_api_key">AIzaSyDflWQY9shwDUltwadmonkFGt-WsiTxir4</string>
+    <string name="google_storage_bucket">vadhiyar-2b0ae.appspot.com</string>
+    <string name="google_cloud_messaging_sender_id">395286959396</string>
+    <string name="google_measurement_id">G-P3XED4CBT2</string>
+
+
+
+    <!-- Theme applied to the Android Window while the process is starting when the OS's Dark Mode setting is off -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <!-- Show a splash screen on the activity. Automatically removed when
+             the Flutter engine draws its first frame -->
+        <item name="android:windowBackground">@drawable/launch_background</item>
+    </style>
+    <!-- Theme applied to the Android Window as soon as the process has started.
+         This theme determines the color of the Android Window while your
+         Flutter UI initializes, as well as behind your Flutter UI while its
+         running.
+
+         This Theme is only used starting with V2 of Flutter's Android embedding. -->
+    <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">?android:colorBackground</item>
+    </style>
+</resources>

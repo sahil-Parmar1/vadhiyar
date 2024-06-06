@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "395286959396",
+    "project_id": "vadhiyar-2b0ae",
+    "storage_bucket": "vadhiyar-2b0ae.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:395286959396:android:92f61e0b365f78cdf6cfb1",
+        "android_client_info": {
+          "package_name": "com.example.vadhiyar"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "395286959396-6kco6e3u7ica13eb18vvr40esrpvvo7q.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.vadhiyar",
+            "certificate_hash": "48965c232fa62e089cc6e54b78aad2f63e7a2982"
+          }
+        },
+        {
+          "client_id": "395286959396-27uhhod6fr38bhkl0ipf6il3ui03l3k2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDflWQY9shwDUltwadmonkFGt-WsiTxir4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "395286959396-27uhhod6fr38bhkl0ipf6il3ui03l3k2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
