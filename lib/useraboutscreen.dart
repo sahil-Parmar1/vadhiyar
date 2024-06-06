@@ -286,6 +286,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 class PostsWidget extends StatelessWidget {
   final String phoneNumber;
 
+
   PostsWidget({required this.phoneNumber});
 
   @override

@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vadhiyar/send.dart';
-import 'home_screen.dart';
 import 'death.dart';
 import 'mypost.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:video_player/video_player.dart';
 import 'dart:async';
-import "package:chewie/chewie.dart";
 import 'package:intl/intl.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'useraboutscreen.dart';
+import 'videoplayer.dart';
 
 class custome extends StatefulWidget
 {
@@ -91,7 +89,7 @@ class _newsState extends State<news> {
                 future: checkIfLiked(newsData['timestamp']),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) {
-                    return CircularProgressIndicator(); // Show a loading indicator while waiting
+                    return Container(); // Show a loading indicator while waiting
                   }
                   bool islike = snapshot.data!;
                       print("the video is liked===========>$islike");
@@ -200,60 +198,7 @@ class _newsState extends State<news> {
 //for video player
 
 
-class VideoPlayerWidget extends StatefulWidget {
-  final String videoUrl;
 
-  VideoPlayerWidget({required this.videoUrl});
-
-  @override
-  _VideoPlayerWidgetState createState() => _VideoPlayerWidgetState();
-}
-
-class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
-  late VideoPlayerController _videoPlayerController;
-  late ChewieController _chewieController;
-
-  @override
-  void initState() {
-    super.initState();
-    _videoPlayerController = VideoPlayerController.network(widget.videoUrl)
-      ..initialize().then((_) {
-        setState(() {});
-      });
-    _chewieController = ChewieController(
-      videoPlayerController: _videoPlayerController,
-      aspectRatio: _videoPlayerController.value.aspectRatio,
-      autoPlay: true,
-      looping: true,
-      // Additional options can be configured here
-    );
-  }
-
-  @override
-  void dispose() {
-    _videoPlayerController.dispose();
-    _chewieController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _videoPlayerController.value.isInitialized
-            ? AspectRatio(
-          aspectRatio: _videoPlayerController.value.aspectRatio,
-          child: Chewie(
-            controller: _chewieController,
-
-          ),
-        )
-            : Container(),
-      ],
-    );
-  }
-}
 
 
 
@@ -271,21 +216,49 @@ String getFileExtension(String url) {
 }
 
 
-class FullArticleScreen extends StatefulWidget
-{
+class FullArticleScreen extends StatefulWidget {
   final String timestamp;
+
   FullArticleScreen({required this.timestamp});
+
   @override
-  State<FullArticleScreen> createState() => _FullArticleScreenState(timestamp:timestamp);
+  State<FullArticleScreen> createState() => _FullArticleScreenState(timestamp: timestamp);
 }
 
 class _FullArticleScreenState extends State<FullArticleScreen> {
   final String timestamp;
+  bool isLiked = false;
+
 
   _FullArticleScreenState({required this.timestamp});
+
   @override
-  Widget build(BuildContext context)
-  {
+  void initState() {
+    super.initState();
+    checkLikeStatus();
+  }
+
+  Future<void> checkLikeStatus() async {
+    bool liked = await checkIfLiked(timestamp);
+    setState(() {
+      isLiked = liked;
+    });
+  }
+
+  void toggleLike() async {
+    await mypost('', timestamp); // Call mypost with liketimestamp
+    setState(() {
+      isLiked = !isLiked;
+
+    });
+  }
+
+  void openCommentScreen(BuildContext context) {
+    showCommentBottomSheet(context, timestamp);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Full Article'),
@@ -309,18 +282,14 @@ class _FullArticleScreenState extends State<FullArticleScreen> {
 
           Widget mediaWidget = SizedBox.shrink();
 
-          // Check if media is a video (.mp4)
           if (newsData['media'] != null && getFileExtension(newsData['media']) == 'mp4') {
-            // Display video player
-            //mediaWidget = CustomVideoPlayer(videoPath: newsData['media']);
             mediaWidget = VideoPlayerWidget(videoUrl: newsData['media']);
           } else if (newsData['media'] != null) {
-            // Display image
             mediaWidget = Image.network(
               newsData['media'],
               width: double.infinity,
-              height: 200, // Set a fixed height
-              fit: BoxFit.cover, // Adjust image to cover the space
+              height: 200,
+              fit: BoxFit.cover,
             );
           }
 
@@ -333,7 +302,7 @@ class _FullArticleScreenState extends State<FullArticleScreen> {
               children: [
                 Text(
                   newsData['title'] ?? '',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
                 ),
                 SizedBox(height: 16),
                 mediaWidget,
@@ -344,7 +313,37 @@ class _FullArticleScreenState extends State<FullArticleScreen> {
                 ),
                 SizedBox(height: 16),
                 Text(
-                  '${newsData['sendername']}'
+                  'By ${newsData['sendername']}',
+                  style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
+                ),
+                SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            isLiked ? Icons.thumb_up : Icons.thumb_up_alt_outlined,
+                            color: isLiked ? Colors.blue : Colors.grey,
+                          ),
+                          onPressed: toggleLike,
+                        ),
+                        Text('${newsData['like']}'),
+                      ],
+                    ),
+                    ElevatedButton.icon(
+                      icon: Icon(Icons.comment),
+                      label: Row(
+                        children: [
+                          Text('${newsData['totalcomments']??0}'),
+                        ],
+                      ),
+                      onPressed: () {
+                        openCommentScreen(context);
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),
