@@ -10,6 +10,7 @@ import 'dart:async';
 import "package:chewie/chewie.dart";
 import 'package:intl/intl.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'useraboutscreen.dart';
 
 class custome extends StatefulWidget
 {
@@ -103,7 +104,13 @@ class _newsState extends State<news> {
                         children: [
                            GestureDetector(
                              onTap: (){
-                              print("use screen is pressed..");
+                              print("${newsData['sender']}is pressed..");
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ProfileScreen(phoneNumber: newsData['sender']??''),
+                                ),
+                              );
 
                               },
                             child: Row(
@@ -660,7 +667,7 @@ Future<void> deleteExpiredDocuments() async {
 }
 
 
-//on tap user about screen
+
 
 
 
