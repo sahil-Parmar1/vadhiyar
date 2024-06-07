@@ -27,8 +27,9 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _onItemTapped(int index) {
+  void _onItemTapped(int index) async{
     _pageController.jumpToPage(index);
+    await _onRefresh();
   }
   @override
   void initState()
@@ -37,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   Future<void> _onRefresh() async {
     // Simulate a network call
-    await Future.delayed(Duration(seconds: 2));
+    await Future.delayed(Duration(milliseconds: 10));
     // Update state or perform any necessary actions here
     profilephotourl=await getprofilephoto();
     setState(() {
@@ -53,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
     return Scaffold(
+
       appBar: AppBar(
         backgroundColor: Colors.blue,
         automaticallyImplyLeading: false,
@@ -98,10 +100,10 @@ class _HomeScreenState extends State<HomeScreen> {
         children: <Widget>[
           _buildPage(0),
           _buildPage(1),
-          _buildPage(2),
+
         ],
       ),
-      floatingActionButton: _selectedIndex == 2
+      floatingActionButton: _selectedIndex == 1
           ? null
           : FloatingActionButton(
               onPressed: () {
@@ -118,10 +120,6 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.newspaper),
             label: 'સમાચાર',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.photo_album_outlined),
-            label: 'મરણ',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.send_and_archive),

@@ -26,10 +26,10 @@ class _customeState extends State<custome> {
   {
     if(widget.index == 0)
     return news();
-    else if(widget.index == 1)
-      return death();
     else
-      return MyPost();
+    return MyPost();
+
+
   }
 }
 
@@ -613,14 +613,26 @@ void showCommentBottomSheet(BuildContext context, String timestamp) {
 
 
 
+
+
 Future<void> deleteExpiredDocuments() async {
   try {
     // Get today's date
     DateTime today = DateTime.now();
     print('Today\'s date: ${today.toIso8601String()}');
 
-    // Retrieve documents from the collection
-    QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('news').get();
+    // Fetch timestamps from 'send' and 'like' collections
+    List<String> sendTimestamps = await _fetchTimestamps('send');
+    List<String> likeTimestamps = await _fetchTimestamps('like');
+
+    // Combine all timestamps
+    List<String> allTimestamps = [...sendTimestamps, ...likeTimestamps];
+
+    // Fetch documents from 'news' collection using the timestamps
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('news')
+        .where(FieldPath.documentId, whereIn: allTimestamps)
+        .get();
 
     // Iterate over the documents
     for (QueryDocumentSnapshot doc in snapshot.docs) {
@@ -640,16 +652,16 @@ Future<void> deleteExpiredDocuments() async {
             // Get the 'media' URL
             String mediaUrl = data['media'];
 
-            // Create a reference to the file to delete
-            Reference storageRef = FirebaseStorage.instance.refFromURL(mediaUrl);
-
-            // Delete the file from Firebase Storage
-            await storageRef.delete();
+            // Delete the media from Firebase Storage
+            await _deleteMedia(mediaUrl);
             print('Deleted media file from storage: $mediaUrl');
           }
 
           // Delete the document from Firestore
-          await FirebaseFirestore.instance.collection('news').doc(doc.id).delete();
+          // Delete only the expired timestamps from 'send' and 'like' collections
+          await _deleteExpiredTimestamps('send', data['timestamp']);
+          await _deleteExpiredTimestamps('like', data['timestamp']);
+          await doc.reference.delete();
           print('Deleted document with ID: ${doc.id}');
         } else {
           print('Document with ID: ${doc.id} is not expired.');
@@ -659,9 +671,60 @@ Future<void> deleteExpiredDocuments() async {
       }
     }
 
+
+
     print('Expired documents check complete.');
   } catch (e) {
     print('Error while deleting expired documents: $e');
+  }
+}
+
+Future<List<String>> _fetchTimestamps(String collectionName) async {
+  try {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String phoneNumber = prefs.getString('phonenumber') ?? '';
+
+    List<String> timestamps = [];
+
+    if (phoneNumber.isNotEmpty) {
+      DocumentSnapshot doc = await FirebaseFirestore.instance.collection(phoneNumber).doc(collectionName).get();
+      if (doc.exists) {
+        timestamps = List<String>.from(doc['timestamp'] ?? []);
+      }
+    }
+
+    return timestamps;
+  } catch (e) {
+    print('Error fetching timestamps: $e');
+    return [];
+  }
+}
+
+Future<void> _deleteMedia(String mediaUrl) async {
+  try {
+    // Create a reference to the file to delete
+    Reference storageRef = FirebaseStorage.instance.refFromURL(mediaUrl);
+
+    // Delete the file from Firebase Storage
+    await storageRef.delete();
+  } catch (e) {
+    print('Error deleting media: $e');
+  }
+}
+
+Future<void> _deleteExpiredTimestamps(String collectionName,String timestamp) async {
+  try {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String phoneNumber = prefs.getString('phonenumber') ?? '';
+
+    if (phoneNumber.isNotEmpty) {
+      // Filter expired timestamps
+      await FirebaseFirestore.instance.collection(phoneNumber).doc(
+          collectionName).update(
+          {'timestamp': FieldValue.arrayRemove([timestamp])});
+    }
+  } catch (e) {
+    print('Error deleting expired timestamps from $collectionName: $e');
   }
 }
 
