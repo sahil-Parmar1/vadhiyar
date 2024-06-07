@@ -31,10 +31,68 @@ class _HomeScreenState extends State<HomeScreen> {
     _pageController.jumpToPage(index);
     await _onRefresh();
   }
+  //show pop up
+  Future<void> _fetchShowPopupFromFirebase() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String phoneNumber = prefs.getString('phonenumber') ?? '';
+
+    // Fetch the value from Firestore
+    try {
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('owner')
+          .where('show', isEqualTo: true)
+          .limit(1)
+          .get();
+
+      // Update showPopup based on the value from Firestore
+      if (snapshot.docs.isNotEmpty) {
+        // If show is true, check if phone number is in views array
+        dynamic data = snapshot.docs.first.data();
+        List<dynamic> views = (data['viewer'] as List<dynamic>?) ?? [];
+        if (!views.contains(phoneNumber)) {
+          // Phone number not in views array, show popup
+          _showPopup(context,data['message'],data['content'],phoneNumber);
+        }
+      }
+    } catch (e) {
+      print('Error fetching data: $e');
+    }
+  }
+
+  void _showPopup(BuildContext context,String link,String content,String phoneNumber) async{
+    QuerySnapshot querySnapshot =
+    await FirebaseFirestore.instance.collection('owner').get();
+
+    // Loop through each document and update the 'viewer' field
+    querySnapshot.docs.forEach((doc) async {
+      await doc.reference.update({
+        'viewer': FieldValue.arrayUnion([phoneNumber]),
+      });
+    });
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('$link'),
+          content: Text('$content'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Close'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
   @override
   void initState()
   {
     super.initState();
+    _fetchShowPopupFromFirebase();
+
   }
   Future<void> _onRefresh() async {
     // Simulate a network call
@@ -65,7 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           IconButton(onPressed: (){
 
-        }, icon: Icon(Icons.settings,color: Colors.white)),
+        }, icon: Icon(Icons.chat,color: Colors.white)),
           TextButton(
             onPressed: ()async{
 
