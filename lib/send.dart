@@ -1,5 +1,7 @@
 
 
+
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -11,230 +13,291 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-void showMessageInput(BuildContext context, int index) {
+import 'news.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
+
+Future<List<String>> _getVillageSuggestions(String query) async {
+  final QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('village').get();
+  final List<String> villages = snapshot.docs.map((doc) => doc.id).toList();
+
+  // Filter villages based on the query
+  List<String> filteredVillages = villages.where((village) => village.toLowerCase().startsWith(query.toLowerCase())).toList();
+  print("$filteredVillages");
+  return filteredVillages;
+}
+
+class MessageInputScreen extends StatefulWidget {
+
+  @override
+  _MessageInputScreenState createState() => _MessageInputScreenState();
+}
+
+class _MessageInputScreenState extends State<MessageInputScreen> {
   final ImagePicker picker = ImagePicker();
   TextEditingController titleController = TextEditingController();
   TextEditingController contentController = TextEditingController();
+  TextEditingController _villageController = TextEditingController();
   XFile? attachedFile;
+  List<String> sendto = ['all'];
 
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    builder: (BuildContext context) {
-      return StatefulBuilder(
-        builder: (BuildContext context, StateSetter setState) {
-          return Padding(
-            padding: MediaQuery.of(context).viewInsets,
-            child: Container(
-              color: Colors.white,
-              padding: const EdgeInsets.all(8.0),
-              child: ListView(
-                shrinkWrap: true,
-                children: <Widget>[
-                  if (attachedFile != null) ...[
-                    if (attachedFile!.path.endsWith('.mp4'))
-                      Expanded(
-                        child: Container(
-                          color: Colors.white,
-                          child: Center(
-                            child: CustomVideoPlayer(videoPath: attachedFile!.path),
-                          ),
-                        ),
-                      )
-                    else
-                      Image.file(
-                        File(attachedFile!.path),
-                        height: 150,
-                      ),
-                    SizedBox(height: 10),
-                  ],
-                  TextField(
-                    controller: titleController,
-                    style: TextStyle(
-                      fontFamily: 'NotoSansGujarati',
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('send Message'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.send),
+            onPressed: contentController.text.isNotEmpty
+                ? () async {
+              String? downloadUrl;
+              if (attachedFile != null) {
+                downloadUrl = await uploadAndShowProgress(context, attachedFile!);
+              }
+              await sendPost(downloadUrl, contentController.text, titleController.text);
 
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'વિષય',
+              // Clear fields after sending
+              titleController.clear();
+              contentController.clear();
+              setState(() {
+                attachedFile = null;
+              });
 
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  TextField(
-                    controller: contentController,
-                    maxLines: null,
+              Navigator.pop(context);
+            }
+                : null,
+            iconSize: 30,
+            color: contentController.text.isNotEmpty ? Colors.blue : Colors.grey,
+          )
 
-
-                    style: TextStyle(
-                      fontFamily: 'NotoSansGujarati',
-
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'Type a Message here..',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-
-                      ),
-                    ),
-                    onChanged: (text) {
-                      setState(() {});
-                    },
-                  ),
-                  SizedBox(height: 10),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: () async {
-                          final XFile? photo = await picker.pickImage(source: ImageSource.gallery);
-                          if (photo != null) {
-                            setState(() {
-                              attachedFile = photo;
-                            });
-                          }
-                        },
-                        style: ButtonStyle(
-                          backgroundColor: MaterialStateProperty.resolveWith<Color?>(
-                                (Set<MaterialState> states) {
-                              return Colors.white;
-                            },
-                          ),
-                          shape: MaterialStateProperty.all<RoundedRectangleBorder>(
-                            RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30.0),
-                            ),
-                          ),
-                        ),
-                        icon: Icon(
-                          Icons.photo,
-                          color: Colors.blue,
-                        ),
-                        label: Text(
-                          'Photo',
-                          style: TextStyle(
-                            color: Colors.black,
-                          ),
-                        ),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: () async {
-                          final XFile? video = await picker.pickVideo(source: ImageSource.gallery);
-                          if (video != null) {
-                            // Check the file size
-                            final File file = File(video.path);
-                            final int maxSizeInBytes = 200 * 1024 * 1024; // 200MB in bytes
-                            final int fileSize = await file.length();
-                            if (fileSize > maxSizeInBytes) {
-                              showDialog(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return AlertDialog(
-                                    title: Text('ફાઇલ ખૂબ મોટી છે'),
-                                    content: Text('કૃપા કરીને 200MB કરતા નાની વિડિઓ પસંદ કરો.'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.pop(context);
-                                        },
-                                        child: Text('OK'),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              );
-                            } else {
-                              setState(() {
-                                attachedFile = video;
-                              });
-                            }
-                          }
-                        },
-                        style: ButtonStyle(
-
-                          backgroundColor: MaterialStateProperty.resolveWith<Color?>(
-                                (Set<MaterialState> states) {
-                              return Colors.white;
-                            },
-                          ),
-                          shape: MaterialStateProperty.all<RoundedRectangleBorder>(
-                            RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30.0),
-                            ),
-                          ),
-                        ),
-                        icon: Icon(
-                          Icons.videocam,
-                          color: Colors.blue,
-                        ),
-                        label: Text(
-                          'Video',
-                          style: TextStyle(
-                            color: Colors.black,
-                          ),
-                        ),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: contentController.text.isNotEmpty
-                            ? () async{
-                            String? downloadUrl;
-                          if(attachedFile!=null)
-                            {
-                              downloadUrl=await uploadAndShowProgress(context, attachedFile!);
-                            }
-                           await sendPost(downloadUrl,contentController.text,titleController.text);
-
-                          // Handle send message logic
-                          print('Title: ${titleController.text}');
-                          print('Content: ${contentController.text}');
-                          if (attachedFile != null) {
-                            print('Attached File: ${attachedFile!.path}');
-                          }
-                          titleController.clear();
-                          contentController.clear();
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              SizedBox(
+                height: 50,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: sendto.length,
+                  itemBuilder: (BuildContext context, int index) {
+                    return GestureDetector(
+                      onTap: () {
+                        if (sendto.length > 1) {
                           setState(() {
-                            attachedFile = null;
+                            sendto.removeAt(index);
                           });
-
-                          Navigator.pop(context);
                         }
-                            : null,
-                        style: ButtonStyle(
-                          backgroundColor: MaterialStateProperty.resolveWith<Color?>(
-                                (Set<MaterialState> states) {
-                              return contentController.text.isNotEmpty ? Colors.blue : Colors.grey;
-                            },
-                          ),
-                          shape: MaterialStateProperty.all<RoundedRectangleBorder>(
-                            RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30.0),
+                      },
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1), // Light blue background
+                          borderRadius: BorderRadius.circular(20), // Rounded corners
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              sendto[index],
+                              style: TextStyle(
+                                color: Colors.blue, // Blue text color
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                        ),
-                        icon: Icon(
-                          Icons.send,
-                          color: Colors.white,
-                        ),
-                        label: Text(
-                          'Send',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
+                            SizedBox(width: 5),
+                            Icon(
+                              Icons.close,
+                              color: Colors.blue,
+                              size: 20,
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    );
 
+
+                  },
+                ),
+              ),
+              SizedBox(height: 20,),
+              TypeAheadFormField<String?>(
+                textFieldConfiguration: TextFieldConfiguration(
+                  controller: _villageController,
+                  decoration: InputDecoration(
+                    labelText: 'ગામ',
+                    prefixIcon: Icon(Icons.location_city),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                suggestionsCallback: _getVillageSuggestions,
+                itemBuilder: (context, String? suggestion) {
+                  return ListTile(
+                    title: Text(suggestion ?? ''),
+                  );
+                },
+                onSuggestionSelected: (String? suggestion) {
+                  setState(() {
+                    _villageController.text = suggestion ?? '';
+                    sendto.add(_villageController.text);
+                  });
+                  _villageController.clear();
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'કૃપા કરીને તમારું ગામ દાખલ કરો';
+                  }
+                  return null;
+                },
+              ),
+              Container(color: Colors.black12,
+                height: 1,
+                width: double.infinity,),
+              SizedBox(height: 20),
+              if (attachedFile != null) ...[
+                if (attachedFile!.path.endsWith('.mp4'))
+                  Container(
+                    height: 200,
+                    child: Center(
+                      child: Text('Video attached'), // replace with CustomVideoPlayer widget
+                    ),
+                  )
+                else
+                  Image.file(
+                    File(attachedFile!.path),
+                    height: 150,
+                  ),
+                SizedBox(height: 10),
+              ],
+              TextField(
+                controller: titleController,
+                style: TextStyle(
+                  fontFamily: 'NotoSansGujarati',
+                ),
+                decoration: InputDecoration(
+                  hintText: 'વિષય',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 10),
+              TextField(
+                controller: contentController,
+                maxLines: null,
+                style: TextStyle(
+                  fontFamily: 'NotoSansGujarati',
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Type a Message here..',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onChanged: (text) {
+                  setState(() {});
+                },
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    onPressed: () async {
+                      final XFile? photo = await picker.pickImage(source: ImageSource.gallery);
+                      if (photo != null) {
+                        setState(() {
+                          attachedFile = photo;
+                        });
+                      }
+                    },
+                    style: ButtonStyle(
+                      backgroundColor: MaterialStateProperty.all(Colors.white),
+                      shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+                        RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30.0),
+                        ),
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.photo,
+                      color: Colors.blue,
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      final XFile? video = await picker.pickVideo(source: ImageSource.gallery);
+                      if (video != null) {
+                        final File file = File(video.path);
+                        final int maxSizeInBytes = 200 * 1024 * 1024; // 200MB in bytes
+                        final int fileSize = await file.length();
+                        if (fileSize > maxSizeInBytes) {
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: Text('ફાઇલ ખૂબ મોટી છે'),
+                                content: Text('કૃપા કરીને 200MB કરતા નાની વિડિઓ પસંદ કરો.'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                    },
+                                    child: Text('OK'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        } else {
+                          setState(() {
+                            attachedFile = video;
+                          });
+                        }
+                      }
+                    },
+                    style: ButtonStyle(
+                      backgroundColor: MaterialStateProperty.all(Colors.white),
+                      shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+                        RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30.0),
+                        ),
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.videocam,
+                      color: Colors.blue,
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {},
+                    style: ButtonStyle(
+                      backgroundColor: MaterialStateProperty.all(Colors.white),
+                      shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+                        RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30.0),
+                        ),
+                      ),
+                    ),
+                    child: Icon(Icons.picture_as_pdf),
+                  ),
                 ],
               ),
-            ),
-          );
-        },
-      );
-    },
-  );
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
+
+
+
+
+
+
+
 
 
 class CustomVideoPlayer extends StatefulWidget {

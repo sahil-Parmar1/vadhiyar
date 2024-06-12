@@ -165,7 +165,11 @@ class _HomeScreenState extends State<HomeScreen> {
           ? null
           : FloatingActionButton(
               onPressed: () {
-               showMessageInput(context,_selectedIndex);
+              // showMessageInputScreen(context,_selectedIndex);
+                Navigator.push(context,
+                MaterialPageRoute(builder: (context) => MessageInputScreen())
+                );
+
             },
             backgroundColor: Colors.green,
             child: Icon(
