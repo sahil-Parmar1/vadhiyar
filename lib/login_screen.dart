@@ -5,11 +5,22 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:vadhiyar/home_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'news.dart';
 
 String? phonenumber;
 class UserDataInputScreen extends StatefulWidget {
   @override
   _UserDataInputScreenState createState() => _UserDataInputScreenState();
+}
+//getvillage suggestion
+Future<List<String>> _getVillageSuggestions(String query) async {
+  final QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('village').get();
+  final List<String> villages = snapshot.docs.map((doc) => doc.id).toList();
+
+  // Filter villages based on the query
+  List<String> filteredVillages = villages.where((village) => village.toLowerCase().startsWith(query.toLowerCase())).toList();
+  print("$filteredVillages");
+  return filteredVillages;
 }
 
 class _UserDataInputScreenState extends State<UserDataInputScreen> {
@@ -21,16 +32,7 @@ class _UserDataInputScreenState extends State<UserDataInputScreen> {
   final _formKey = GlobalKey<FormState>();
   String? _selectedVillage;
 
-//getvillage suggestion
-  Future<List<String>> _getVillageSuggestions(String query) async {
-    final QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('village').get();
-    final List<String> villages = snapshot.docs.map((doc) => doc.id).toList();
 
-    // Filter villages based on the query
-    List<String> filteredVillages = villages.where((village) => village.toLowerCase().startsWith(query.toLowerCase())).toList();
-    print("$filteredVillages");
-    return filteredVillages;
-  }
 
   Future<void> _saveUserDataAndNavigate() async {
 
@@ -52,6 +54,15 @@ class _UserDataInputScreenState extends State<UserDataInputScreen> {
             _surnameController.text, _lastNameController.text,
             _selectedVillage??'');
         await incrementVillagePopulation(_selectedVillage);
+        //updateing the buttons
+        List<String> buttons=[];
+        buttons.add('all');
+        buttons.add("$_selectedVillage");
+
+        print("buttons on login =>$buttons");
+        SharedPreferences got= await SharedPreferences.getInstance();
+        await got.setStringList('buttons', buttons);
+        //end
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => SignInScreen()),
@@ -77,6 +88,15 @@ class _UserDataInputScreenState extends State<UserDataInputScreen> {
               _surnameController.text, _lastNameController.text,
               _selectedVillage??'');
           await incrementVillagePopulation(_selectedVillage);
+          //updateing the buttons
+          List<String> buttons=[];
+          buttons.add('all');
+          buttons.add("$_selectedVillage");
+
+          print("buttons on login =>$buttons");
+          SharedPreferences got= await SharedPreferences.getInstance();
+          await got.setStringList('buttons', buttons);
+          //end
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => SignInScreen()),
@@ -99,6 +119,14 @@ class _UserDataInputScreenState extends State<UserDataInputScreen> {
               _surnameController.text, _lastNameController.text,
               _selectedVillage??'');
           await incrementVillagePopulation(_selectedVillage);
+          //updateing the buttons
+          List<String> buttons=[];
+          buttons.add('all');
+          buttons.add("$_selectedVillage");
+          print("buttons on login =>$buttons");
+          SharedPreferences got= await SharedPreferences.getInstance();
+          await got.setStringList('buttons', buttons);
+          //end
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => SignInScreen()),

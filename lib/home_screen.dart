@@ -51,7 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
         List<dynamic> views = (data['viewer'] as List<dynamic>?) ?? [];
         if (!views.contains(phoneNumber)) {
           // Phone number not in views array, show popup
-          _showPopup(context,data['message'],data['content'],phoneNumber);
+          _showPopup(context,data['message'],data['content'],phoneNumber,data['adlink']);
         }
       }
     } catch (e) {
@@ -59,7 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _showPopup(BuildContext context,String link,String content,String phoneNumber) async{
+  void _showPopup(BuildContext context,String link,String content,String phoneNumber,String adlink) async{
     QuerySnapshot querySnapshot =
     await FirebaseFirestore.instance.collection('owner').get();
 
@@ -74,7 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('$link'),
-          content: Text('$content'),
+          content: Text('$content ${adlink}'),
           actions: <Widget>[
             TextButton(
               child: Text('Close'),

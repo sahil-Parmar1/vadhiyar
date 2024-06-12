@@ -9,6 +9,19 @@ import 'package:intl/intl.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'useraboutscreen.dart';
 import 'videoplayer.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'login_screen.dart';
+//getvillage suggestion
+Future<List<String>> _getVillageSuggestions(String query) async {
+  final QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('village').get();
+  final List<String> villages = snapshot.docs.map((doc) => doc.id).toList();
+
+  // Filter villages based on the query
+  List<String> filteredVillages = villages.where((village) => village.toLowerCase().startsWith(query.toLowerCase())).toList();
+  print("$filteredVillages");
+  return filteredVillages;
+}
+String sendtogam='all';
 
 class custome extends StatefulWidget
 {
@@ -18,14 +31,34 @@ class custome extends StatefulWidget
   @override
   State<custome> createState() => _customeState();
 }
-
+Future<List<String>> getbuttons() async
+{
+  SharedPreferences got= await SharedPreferences.getInstance();
+  print(got.getStringList('buttons')??[]);
+  return got.getStringList('buttons')??[];
+}
 class _customeState extends State<custome> {
 
+   List<String> buttons=[];
+   void _loadbuttons() async
+   {
+     buttons=await getbuttons();
+     setState(() {
+       print("buttons => $buttons");
+     });
+   }
+  @override
+  void initState()
+  {
+    super.initState();
+    _loadbuttons();
+    setState(() {});
+  }
   @override
   Widget build(BuildContext context)
   {
     if(widget.index == 0)
-    return news();
+    return news(buttons:buttons);
     else
     return MyPost();
 
@@ -35,158 +68,320 @@ class _customeState extends State<custome> {
 
 class news extends StatefulWidget
 {
+  List<String> buttons;
+  news({required this.buttons});
   @override
   State<news> createState() => _newsState();
 }
 
 class _newsState extends State<news> {
-
+  TextEditingController _villageController = TextEditingController();
+   PageController _pageController = PageController();
   @override
+  void dispose() {
+    _villageController.dispose();
+    super.dispose();
+    _pageController.dispose();
+  }
+   @override
   Widget build(BuildContext context) {
+    print("buttons is scaffold ${widget.buttons}");
+
     return Scaffold(
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('news').orderBy('timestamp', descending: true).snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
+      appBar: AppBar(
 
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
+        title:Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Container(
+                height: 50.0,  // Adjust the height as needed
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: widget.buttons.length+1,
+                  itemBuilder: (context, index) {
+                    if(index == widget.buttons.length)
+                      return TextButton(
+                        onPressed: () {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true, // Add this line
+                            builder: (BuildContext context) {
+                              return Padding(
+                                padding: EdgeInsets.only(
+                                  left: 16.0,
+                                  right: 16.0,
+                                  top: 16.0,
+                                  bottom: MediaQuery.of(context).viewInsets.bottom + 16.0,
+                                ),
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      TypeAheadFormField<String?>(
+                                        textFieldConfiguration: TextFieldConfiguration(
+                                          controller: _villageController,
+                                          decoration: InputDecoration(
+                                            labelText: 'ગામ',
+                                            prefixIcon: Icon(Icons.location_city),
+                                            border: OutlineInputBorder(),
+                                          ),
+                                        ),
+                                        suggestionsCallback: _getVillageSuggestions,
+                                        itemBuilder: (context, String? suggestion) {
+                                          return ListTile(
+                                            title: Text(suggestion ?? ''),
+                                          );
+                                        },
+                                        onSuggestionSelected: (String? suggestion) {
+                                          setState(() {
+                                            _villageController.text = suggestion ?? '';
+                                            if(!(widget.buttons.contains(_villageController.text)))
+                                              {
+                                                widget.buttons.add(_villageController.text);
+                                                SharedPreferences.getInstance().then((value) {
+                                                  value.setStringList('buttons', widget.buttons);
+                                                }); 
+                                              }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(child: Text('No news available.'));
-          }
-
-          final newsDocs = snapshot.data!.docs;
-
-          // Sort the news items by likes in descending order
-          newsDocs.sort((a, b) => (b['like'] ?? 0).compareTo(a['like'] ?? 0));
-
-          return ListView.builder(
-            itemCount: newsDocs.length,
-            itemBuilder: (context, index) {
-              var newsData = newsDocs[index].data() as Map<String, dynamic>;
-              Widget mediaWidget = SizedBox.shrink();
-
-              // Check if media is a video (.mp4)
-              if (newsData['media'] != null && getFileExtension(newsData['media']) == 'mp4') {
-                mediaWidget = VideoPlayerWidget(videoUrl: newsData['media']);
-              } else if (newsData['media'] != null) {
-                mediaWidget = Image.network(
-                  newsData['media'],
-                  width: double.infinity,
-                  height: 200,
-                  fit: BoxFit.cover,
-                );
-              }
-
-              String content = newsData['content'] ?? 'No Content';
-              bool showReadMore = content.length > 100;
-
-              return FutureBuilder<bool>(
-                future: checkIfLiked(newsData['timestamp']),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
-                    return Container(); // Show a loading indicator while waiting
-                  }
-                  bool islike = snapshot.data!;
-                      print("the video is liked===========>$islike");
-                  return Card(
-                    elevation: 3,
-                    margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    child: ListTile(
-                      title: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                           GestureDetector(
-                             onTap: (){
-                              print("${newsData['sender']}is pressed..");
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ProfileScreen(phoneNumber: newsData['sender']??''),
+                                          });
+                                          _villageController.clear();
+                                          Navigator.of(context).pop();
+                                        },
+                                        validator: (value) {
+                                          if (value == null || value.isEmpty) {
+                                            return 'કૃપા કરીને તમારું ગામ દાખલ કરો';
+                                          }
+                                          // You can add validation rules for village here
+                                          return null;
+                                        },
+                                      ),
+                                      SizedBox(height: 200),
+                                      ElevatedButton(onPressed: (){
+                                        _villageController.clear();
+                                        Navigator.pop(context);
+                                      }, child: Text("Cancel"))
+                                    ],
+                                  ),
                                 ),
                               );
+                            },
+                          );
+                        },
+                        child: Icon(Icons.add),
+                      );
+                    else
+                      return Container(
+                        margin: EdgeInsets.symmetric(horizontal: 8.0), // Increase margin for better spacing
+                        padding: EdgeInsets.all(4.0), // Add padding for better touch area
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12.0), // Rounded corners
 
-                              },
-                            child: Row(
-                              children: [
-                                Container(
-                                  margin: EdgeInsets.only(right: 10),
-                                  child: buildSenderLogo(newsData['sendername']),
-                                ),
-                                SizedBox(width: 8),
-                                Text("${newsData['sendername']}"),
-                              ],
+                          gradient: LinearGradient(
+                            colors: sendtogam!=widget.buttons[index]?[Colors.white,Colors.white]:[Colors.blueAccent, Colors.lightBlueAccent],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              sendtogam = widget.buttons[index];
+                              _pageController.jumpToPage(index);
+                            });
+                          },
+                          style: ElevatedButton.styleFrom(
+                            primary: Colors.transparent, // Use gradient color from container
+                            shadowColor: Colors.transparent, // Remove button shadow
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                            ),
+                            padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0), // Better padding for larger touch area
+                          ),
+                          child: Text(
+                            widget.buttons[index],
+                            style: TextStyle(
+                              color: sendtogam!=widget.buttons[index]?Colors.blue:Colors.white,
+                              fontSize: 16.0,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          SizedBox(height: 8),
-                          mediaWidget,
-                          SizedBox(height: 8),
-                          Text(newsData['title'] ?? '', style: TextStyle(fontWeight: FontWeight.bold)),
-                          SizedBox(height: 8),
-                          Text(
-                            showReadMore ? content.substring(0, 100) + '...' : content,
-                            style: TextStyle(color: Colors.black87),
-                          ),
-                          if (showReadMore)
-                            TextButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => FullArticleScreen(timestamp: newsData['timestamp'])),
-                                );
-                              },
-                              child: Text("Read More"),
-                            ),
-                        ],
-                      ),
-                      subtitle: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              IconButton(
-                                onPressed: () async {
-                                  setState(() {
-                                    islike = !islike;
-                                  });
-                                  if (islike) {
-                                    await mypost('', newsData['timestamp']);
-                                  }
-                                },
-                                icon: islike
-                                    ? Icon(Icons.thumb_up_off_alt_sharp, color: Colors.blue)
-                                    : Icon(Icons.thumb_up_alt_sharp),
+                        ),
+                      );
+
+
+                  },
+                ),
+              ),
+            ),
+
+
+          ],
+        ),
+
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.buttons.length,
+        onPageChanged: (index)
+          {
+            setState(() {
+              sendtogam=widget.buttons[index];
+            });
+          },
+        itemBuilder: (context,index) {
+          return StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection('news').orderBy('timestamp', descending: true).snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Center(child: CircularProgressIndicator());
+              }
+
+              if (snapshot.hasError) {
+                return Center(child: Text('Error: ${snapshot.error}'));
+              }
+
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return Center(child: Text('No news available.'));
+              }
+
+              final newsDocs = snapshot.data!.docs;
+
+              // Sort the news items by likes in descending order
+              newsDocs.sort((a, b) => (b['like'] ?? 0).compareTo(a['like'] ?? 0));
+
+
+
+              return ListView.builder(
+                itemCount: newsDocs.length,
+                itemBuilder: (context, index) {
+                  var newsData = newsDocs[index].data() as Map<String, dynamic>;
+
+                      Widget mediaWidget = SizedBox.shrink();
+                        if (!(newsData['sendto']?.contains(sendtogam)==true)) {
+                          return SizedBox.shrink();
+                        }
+                      // Check if media is a video (.mp4)
+                      if (newsData['media'] != null && getFileExtension(newsData['media']) == 'mp4') {
+                        mediaWidget = VideoPlayerWidget(videoUrl: newsData['media']);
+                      } else if (newsData['media'] != null) {
+                        mediaWidget = Image.network(
+                          newsData['media'],
+                          width: double.infinity,
+                          height: 200,
+                          fit: BoxFit.cover,
+                        );
+                      }
+
+                      String content = newsData['content'] ?? 'No Content';
+                      bool showReadMore = content.length > 100;
+
+                      return FutureBuilder<bool>(
+                        future: checkIfLiked(newsData['timestamp']),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return Container(); // Show a loading indicator while waiting
+                          }
+                          bool islike = snapshot.data!;
+                          print("the video is liked===========>$islike");
+                          return Card(
+                            elevation: 3,
+                            margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            child: ListTile(
+                              title: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  GestureDetector(
+                                    onTap: (){
+                                      print("${newsData['sender']}is pressed..");
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => ProfileScreen(phoneNumber: newsData['sender']??''),
+                                        ),
+                                      );
+
+                                    },
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          margin: EdgeInsets.only(right: 10),
+                                          child: buildSenderLogo(newsData['sendername']),
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text("${newsData['sendername']}"),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  mediaWidget,
+                                  SizedBox(height: 8),
+                                  Text(newsData['title'] ?? '', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    showReadMore ? content.substring(0, 100) + '...' : content,
+                                    style: TextStyle(color: Colors.black87),
+                                  ),
+                                  if (showReadMore)
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (context) => FullArticleScreen(timestamp: newsData['timestamp'])),
+                                        );
+                                      },
+                                      child: Text("Read More"),
+                                    ),
+                                ],
                               ),
-                              Text('${newsData['like'] ?? 0}'),
-                            ],
-                          ),
-                          TextButton(
-                            onPressed: () {
+                              subtitle: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      IconButton(
+                                        onPressed: () async {
+                                          setState(() {
+                                            islike = !islike;
+                                          });
+                                          if (islike) {
+                                            await mypost('', newsData['timestamp']);
+                                          }
+                                        },
+                                        icon: islike
+                                            ? Icon(Icons.thumb_up_off_alt_sharp, color: Colors.blue)
+                                            : Icon(Icons.thumb_up_alt_sharp),
+                                      ),
+                                      Text('${newsData['like'] ?? 0}'),
+                                    ],
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
 
-                              showCommentBottomSheet(context, newsData['timestamp']);
-                           },
-                            child: Row(
-                              children: [
-                                Icon(Icons.comment),
-                                SizedBox(width: 5),
-                                Text("${newsData['totalcomments'] ??0}"),
-                              ],
+                                      showCommentBottomSheet(context, newsData['timestamp']);
+                                    },
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.comment),
+                                        SizedBox(width: 5),
+                                        Text("${newsData['totalcomments'] ??0}"),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
+                          );
+                        },
+                      );
+                    }
+
+
               );
+
             },
           );
-
-        },
+        }
       ),
 
     );
