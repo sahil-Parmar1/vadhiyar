@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:chewie/chewie.dart';
 import 'package:video_player/video_player.dart';
+// import 'package:firebase_core/firebase_core.dart';
 
 class VideoPlayerWidget extends StatefulWidget {
   final String videoUrl;
