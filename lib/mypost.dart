@@ -20,12 +20,17 @@ class _MyPostState extends State<MyPost> {
   @override
   void initState() {
     super.initState();
-    _fetchUserData();
-    _fetchFollowCounts();
-    _fetchMyPosts();
-    _fetchLikedPosts();
-  }
+    Refresh();
 
+  }
+  Future<void> Refresh()async
+  {
+    await _fetchUserData();
+    await _fetchFollowCounts();
+    await _fetchMyPosts();
+    await _fetchLikedPosts();
+
+  }
   Future<void> _fetchUserData() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -38,16 +43,19 @@ class _MyPostState extends State<MyPost> {
             .get();
         if (userDoc.exists) {
           setState(() {
-            _profilePhotoUrl = userDoc['profilephoto'] ?? '';
             _name =
-            "${userDoc['surname'] ?? ''} ${userDoc['name'] ?? ''} ${userDoc['lastname'] ?? ''}";
-            _village = userDoc['village'] ?? '';
+          "${userDoc['surname'] ?? ''} ${userDoc['name'] ?? ''} ${userDoc['lastname'] ?? ''}";
+          _village = userDoc['village'] ?? '';
+            _profilePhotoUrl = userDoc['profilephoto'] ?? '';
+
           });
         }
       }
     } catch (e) {
       print("Error fetching user data: $e");
     }
+    print("name  ====>>>$_name");
+    print("village  ====>>>$_village");
   }
 
   Future<void> _fetchFollowCounts() async {
@@ -171,10 +179,10 @@ class _MyPostState extends State<MyPost> {
         children: [
           CircleAvatar(
             radius: 40,
-            backgroundImage: _profilePhotoUrl.isNotEmpty
-                ? NetworkImage(_profilePhotoUrl)
+            backgroundImage: _profilePhotoUrl.isNotEmpty && _profilePhotoUrl!=null
+                ? NetworkImage(_profilePhotoUrl!)
                 : NetworkImage(
-                "https://img.icons8.com/?size=100&id=mj4zUKpD4IjJ&format=png&color=000000"),
+                "https://img.icons8.com/?size=100&id=6oAufRlrYpcN&format=png&color=000000"),
           ),
           SizedBox(width: 20),
           Column(
@@ -182,7 +190,7 @@ class _MyPostState extends State<MyPost> {
             children: [
               Text(
                 _name,
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold,color: Colors.black),
               ),
               Text(
                 _village,

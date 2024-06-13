@@ -200,7 +200,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     radius: 50,
                     backgroundImage: profilePhotoUrl.isNotEmpty
                         ? NetworkImage(profilePhotoUrl)
-                        : NetworkImage("https://img.icons8.com/?size=100&id=mj4zUKpD4IjJ&format=png&color=000000") as ImageProvider,
+                        : NetworkImage(
+                        "https://img.icons8.com/?size=100&id=6oAufRlrYpcN&format=png&color=000000") as ImageProvider,
                   ),
                   SizedBox(height: 10),
                   Text(
