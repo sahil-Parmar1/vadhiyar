@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart' as path;
 import 'dart:io';
 import 'package:video_player/video_player.dart';
 import 'dart:async';
@@ -14,8 +15,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'news.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
-
+import "pdfview.dart";
 Future<List<String>> _getVillageSuggestions(String query) async {
   final QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('village').get();
   final List<String> villages = snapshot.docs.map((doc) => doc.id).toList();
@@ -54,7 +56,7 @@ class _MessageInputScreenState extends State<MessageInputScreen> {
               if (attachedFile != null) {
                 downloadUrl = await uploadAndShowProgress(context, attachedFile!);
               }
-              await sendPost(downloadUrl, contentController.text, titleController.text);
+              await sendPost(downloadUrl, contentController.text, titleController.text,sendto);
 
               // Clear fields after sending
               titleController.clear();
@@ -160,9 +162,27 @@ class _MessageInputScreenState extends State<MessageInputScreen> {
               if (attachedFile != null) ...[
                 if (attachedFile!.path.endsWith('.mp4'))
                   Container(
-                    height: 200,
+                    height: 400,
                     child: Center(
-                      child: Text('Video attached'), // replace with CustomVideoPlayer widget
+                      child: CustomVideoPlayer(videoPath: attachedFile!.path), // replace with CustomVideoPlayer widget
+                    ),
+                  )
+                else if (attachedFile!.path.endsWith('.pdf'))
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PdfPreviewScreen(filePath: attachedFile!.path),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      "PDF👉${path.basename(attachedFile!.path)}",
+                      style: TextStyle(
+                        color: Colors.blue,
+                          fontSize: 15
+                      ),
                     ),
                   )
                 else
@@ -271,7 +291,21 @@ class _MessageInputScreenState extends State<MessageInputScreen> {
                     ),
                   ),
                   ElevatedButton(
-                    onPressed: () {},
+                    onPressed: ()async {
+
+                      FilePickerResult? result = await FilePicker.platform.pickFiles(
+                        type: FileType.custom,
+                        allowedExtensions: ['pdf'],
+                      );
+
+                      if (result != null && result.files.single.path != null) {
+                        setState(() {
+                          attachedFile = XFile(result.files.single.path!);
+                        });
+                      } else {
+                        print("File not selected.");
+                      }
+                    },
                     style: ButtonStyle(
                       backgroundColor: MaterialStateProperty.all(Colors.white),
                       shape: MaterialStateProperty.all<RoundedRectangleBorder>(
@@ -456,10 +490,16 @@ Future<String?> uploadAndShowProgress(BuildContext context, XFile file) async {
 }
 Future<UploadTask> uploadFileToFirebase(XFile file, FirebaseAuth auth, FirebaseFirestore firestore) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  String fileType = file.path.endsWith('.mp4') ? '.mp4' : '.jpg';
+  //String fileType = file.path.endsWith('.mp4') ? '.mp4' : '.jpg';
+  String fileType = path.extension(file.path).toLowerCase(); // Get the file extension and convert to lowercase
+
+  // Ensure the file is either an image, video, or PDF
+  if (fileType != '.jpg' && fileType != '.jpeg' && fileType != '.png' && fileType != '.mp4' && fileType != '.pdf') {
+    throw Exception('File type not supported. Please upload an image, video, or PDF file.');
+  }
   final storageRef = FirebaseStorage.instance
       .ref()
-      .child('user_files/${prefs.getString('phonenumber')}/${DateTime.now()}.$fileType');
+      .child('user_files/${prefs.getString('phonenumber')}/${DateTime.now()}$fileType');
 
   UploadTask task = storageRef.putFile(File(file.path));
   return task;
@@ -467,7 +507,7 @@ Future<UploadTask> uploadFileToFirebase(XFile file, FirebaseAuth auth, FirebaseF
 
 
 
-Future<void> sendPost(String? downloadUrl, String content, String? title) async {
+Future<void> sendPost(String? downloadUrl, String content, String? title,List<String> sendto) async {
   final prefs = await SharedPreferences.getInstance();
   final phoneNumber = prefs.getString('phonenumber') ?? 'unknown';
   final timestamp=DateTime.now().toIso8601String();
@@ -478,6 +518,7 @@ Future<void> sendPost(String? downloadUrl, String content, String? title) async 
     'sender': phoneNumber,
     'endtime': formatDate,
     'timestamp': timestamp,
+    'sendto':sendto,
     'like':0,
     'views':0,
     'sendername':'${prefs.getString('surname')} ${prefs.getString('name')} ${prefs.getString('lastname')}',

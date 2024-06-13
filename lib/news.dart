@@ -11,6 +11,8 @@ import 'useraboutscreen.dart';
 import 'videoplayer.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'login_screen.dart';
+import  "pdfview.dart";
+
 //getvillage suggestion
 Future<List<String>> _getVillageSuggestions(String query) async {
   final QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('village').get();
@@ -262,9 +264,34 @@ class _newsState extends State<news> {
                           return SizedBox.shrink();
                         }
                       // Check if media is a video (.mp4)
-                      if (newsData['media'] != null && getFileExtension(newsData['media']) == 'mp4') {
+                        String fileExtension='';
+                        if(newsData['media']!= null)
+                         fileExtension = getFileExtension(newsData['media']);
+                      if (newsData['media'] != null && fileExtension == 'mp4') {
                         mediaWidget = VideoPlayerWidget(videoUrl: newsData['media']);
-                      } else if (newsData['media'] != null) {
+                      }
+                      else if(newsData['media'] != null && fileExtension =='pdf')
+                      {
+                        mediaWidget=GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => PdfWebPreviewScreen(url: newsData['media']),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            "PDF👉${DateFormat('dd MM yyyy HH:mm:ss').format(DateTime.parse(newsData['timestamp']))}.pdf",
+                            style: TextStyle(
+                              color: Colors.blue,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        );
+                      }
+                      else if (newsData['media'] != null && (fileExtension=='jpg' || fileExtension=='jpeg' || fileExtension=='png' ))
+                      {
                         mediaWidget = Image.network(
                           newsData['media'],
                           width: double.infinity,
@@ -272,6 +299,7 @@ class _newsState extends State<news> {
                           fit: BoxFit.cover,
                         );
                       }
+
 
                       String content = newsData['content'] ?? 'No Content';
                       bool showReadMore = content.length > 100;
@@ -477,9 +505,36 @@ class _FullArticleScreenState extends State<FullArticleScreen> {
 
           Widget mediaWidget = SizedBox.shrink();
 
-          if (newsData['media'] != null && getFileExtension(newsData['media']) == 'mp4') {
+          // Check if media is a video (.mp4)
+           String fileExtension='';
+
+          if(newsData['media']!= null)
+            fileExtension = getFileExtension(newsData['media']);
+          if (newsData['media'] != null && fileExtension == 'mp4') {
             mediaWidget = VideoPlayerWidget(videoUrl: newsData['media']);
-          } else if (newsData['media'] != null) {
+          }
+          else if(newsData['media'] != null && fileExtension =='pdf')
+          {
+            mediaWidget=GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PdfWebPreviewScreen(url: newsData['media']),
+                  ),
+                );
+              },
+              child: Text(
+                "PDF👉${DateFormat('dd MM yyyy HH:mm:ss').format(DateTime.parse(newsData['timestamp']))}.pdf",
+                style: TextStyle(
+                  color: Colors.blue,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            );
+          }
+          else if (newsData['media'] != null && (fileExtension=='jpg' || fileExtension=='jpeg' || fileExtension=='png' ))
+          {
             mediaWidget = Image.network(
               newsData['media'],
               width: double.infinity,
