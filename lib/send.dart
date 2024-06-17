@@ -25,6 +25,7 @@ Future<List<String>> _getVillageSuggestions(String query) async {
   // Filter villages based on the query
   List<String> filteredVillages = villages.where((village) => village.toLowerCase().startsWith(query.toLowerCase())).toList();
   print("$filteredVillages");
+  print("hello check");
   return filteredVillages;
 }
 
